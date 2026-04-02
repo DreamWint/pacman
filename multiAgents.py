@@ -137,24 +137,45 @@ class MinimaxAgent(MultiAgentSearchAgent):
             maxiAction = None
             # condition for termination of recursive method calls
             def terminal_condition(state,depth):
-                "*** YOUR CODE HERE ***"
+                return depth <= 0 or state.isWin() or state.isLose()
             if terminal_condition(state,depth) == True:
                 return (self.evaluationFunction(state), None)
             # initialize value
-            value = "*** YOUR CODE HERE ***"
+            value = float('-inf')
             # for every legal action, update value and maxiAction
-            "*** YOUR CODE HERE ***"
+            actions = state.getLegalActions(index_of_agent)
+            for action in actions:
+                successor = state.generateSuccessor(index_of_agent, action)
+                # pacman's turn, and the next agent is a ghost(index = 1)
+                next_value = minimizer(successor, depth, 1)[0]
+                if next_value > value:
+                    value = next_value
+                    maxiAction = action
+
             return (value, maxiAction)
         def minimizer(state, depth, index_of_agent):
             miniAction = None
             def terminal_condition(state,depth):
-                "*** YOUR CODE HERE ***"
+                return depth <= 0 or state.isWin() or state.isLose()
             if terminal_condition(state,depth) == True:
                 return (self.evaluationFunction(state), miniAction)
             # initialize value
-            value = "*** YOUR CODE HERE ***"
-            # for every legal action, update value and miniAction
-            "*** YOUR CODE HERE ***"
+            value = float('inf')
+            actions = state.getLegalActions(index_of_agent)
+            for action in actions:
+                successor = state.generateSuccessor(index_of_agent, action)
+                # the last ghost's turn, so the next is pacman(max layer), depth--
+                if index_of_agent == state.getNumAgents() - 1:
+                    next_value = maximizer(successor, depth-1, 0)[0]
+                    if next_value < value:
+                        value = next_value
+                        miniAction = action
+                # the next agent is also a ghost, so still in min layer
+                else:
+                    next_value = minimizer(successor, depth, index_of_agent+1)[0]
+                    if next_value < value:
+                        value = next_value
+                        miniAction = action
             return (value, miniAction)      
         action = maximizer(gameState, self.depth, 0)[1]
         return action 
