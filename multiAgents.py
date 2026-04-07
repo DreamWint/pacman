@@ -267,41 +267,31 @@ class MCTSAgent(MultiAgentSearchAgent):
                 self.denominator = data[2]          # 该节点的访问次数
 
         def Selection(cgs, cgstree):
-            '''
-                cgs: current game state, <class 'GameState' (defined in pacman.py)>
-                cgstree: current game state tree, <class 'Node'>
-                
-                YOUR CORE HERE (~30 lines or fewer)
-                1. You have to find a node that is not completely expanded (e.g., node.north is None)
-                2. When you find the node, return its corresponding game state and the node itself.
-                3. You should use best_UCT() to find the best child of a node each time.
-
-            '''
-            children = []
-            children.append((cgstree.north, "North"))
-            children.append((cgstree.east, "East"))
-            children.append((cgstree.south, "South"))
-            children.append((cgstree.west, "West"))
-            children.append((cgstree.stop, "Stop"))
-            
-            for child, action in children:
-                if child is None:
-                    return cgs, cgstree
-            
-            next_state, action = best_UCT(children, random_prob=0.3)
-            
-            next_node = None
-            for child, act in children:
-                if act == action:
-                    next_node = child
-                    break
-            return Selection(next_state, next_node)
+            while True:
+                children = [
+                    (cgstree.north, "North"),
+                    (cgstree.east, "East"),
+                    (cgstree.south, "South"),
+                    (cgstree.west, "West"),
+                    (cgstree.stop, "Stop")
+                ]
+                for child, action in children:
+                    if child is None:
+                        return cgs, cgstree
+                _, action = best_UCT(children, random_prob=0.3)
+                cgs = cgs.generatePacmanSuccessor(action)
+                for child, act in children:
+                    if act == action:
+                        cgstree = child
+                        break
 
 
         def Expansion(cgstree):
             legal_actions = cgstree.statevalue.getLegalActions(0)
             '''
                 YOUR CORE HERE (~20 lines or fewer)
+                你需要在当前游戏状态树节点上扩展所有子节点。
+                你应该使用Node()来为每个子节点创建一个新节点。
                 1. You should expand the current game state tree node by adding all of its children.
                 2. You should use Node() to create a new node for each child.
                 3. You can traverse the legal_actions to find all the children of the current game state tree node.
@@ -313,30 +303,35 @@ class MCTSAgent(MultiAgentSearchAgent):
                         new_node = Node((new_state, 0, 0))
                         new_node.parent = cgstree
                         cgstree.north = new_node
+                        setattr(cgstree, 'north', new_node)
                 elif action == 'East':
                     if cgstree.east is None:
                         new_state = cgstree.statevalue.generatePacmanSuccessor('East')
                         new_node = Node((new_state, 0, 0))
                         new_node.parent = cgstree
                         cgstree.east = new_node
+                        setattr(cgstree, 'east', new_node)
                 elif action == 'South':
                     if cgstree.south is None:
                         new_state = cgstree.statevalue.generatePacmanSuccessor('South')
                         new_node = Node((new_state, 0, 0))
                         new_node.parent = cgstree
                         cgstree.south = new_node
+                        setattr(cgstree,'south', new_node)
                 elif action == 'West':
                     if cgstree.west is None:
                         new_state = cgstree.statevalue.generatePacmanSuccessor('West')
                         new_node = Node((new_state, 0, 0))
                         new_node.parent = cgstree
                         cgstree.west = new_node
+                        setattr(cgstree, 'west', new_node)
                 elif action == 'Stop':
                     if cgstree.stop is None:
                         new_state = cgstree.statevalue.generatePacmanSuccessor('Stop')
                         new_node = Node((new_state, 0, 0))
                         new_node.parent = cgstree
                         cgstree.stop = new_node
+                        setattr(cgstree, 'stop', new_node)
             
 
         def Simulation(cgs, cgstree):
@@ -346,14 +341,18 @@ class MCTSAgent(MultiAgentSearchAgent):
                 We choose to more quickly expand our game tree (and hence pay more memory) to get a faster MCTS improvement in return.
             '''
             simulation_score = 0
-            while cgstree.statevalue.isWin() is False and cgstree.statevalue.isLose() is False:
-                cgs, cgstree = Selection(cgs, cgstree)
-                Expansion(cgstree)
+            MAX_DEPTH = 10
+            cur_depth = 0
+            while cgs.isWin() is False and cgs.isLose() is False and cur_depth < MAX_DEPTH:
+                actions = cgs.getLegalActions(0)
+                action = random.choice(actions)
+                cgs = cgs.generatePacmanSuccessor(action)
+                cur_depth += 1
             '''
                 YOUR CORE HERE (~4 lines)
                 You should modify the simulation_score of the current game state.
             '''
-            
+            simulation_score = self.evaluationFunction(cgs) 
             return simulation_score, cgstree
 
         def Backpropagation(cgstree, simulation_score):
@@ -362,7 +361,9 @@ class MCTSAgent(MultiAgentSearchAgent):
                     YOUR CORE HERE (~3 lines)
                     You should recursively update the numerator and denominator of the game states until you reaches the root of the tree.
                 '''
-                ...
+                cgstree.numerator += simulation_score
+                cgstree.denominator += 1
+                cgstree = cgstree.parent
             return cgstree
 
         # 根据UCT算法选择最好的子节点及其对应的action。你不需要修改这个函数。
@@ -382,10 +383,12 @@ class MCTSAgent(MultiAgentSearchAgent):
 
             children_UCT = []
             for i in range(len(children)):
-                
-                value = ((children[i][0].numerator / children[i][0].denominator) + sqrt(2) * sqrt(
-                    ((log(children[i][0].parent.denominator))/log(2.71828)) / children[i][0].denominator)), children[i][1]
-
+                if children[i][0].denominator == 0:
+                    value = (float('inf'), children[i][1])
+                else:
+                    parent_n = children[i][0].parent.denominator if children[i][0].parent.denominator > 0 else 1
+                    value = ((children[i][0].numerator / children[i][0].denominator) + sqrt(2) * sqrt(
+                        ((log(parent_n))/log(2.71828)) / children[i][0].denominator)), children[i][1]
                 children_UCT.append(value)
 
             max_index = 0
@@ -482,7 +485,8 @@ class MCTSAgent(MultiAgentSearchAgent):
             YOUR CODE HERE (~1-2 line)
             initialize root node cgstree (class Node)
         '''
-        cgstree = None
+        cgstree = Node((gameState, 0, 0))
+
 
         for _ in range(mcts_time_limit):
             gameState, cgstree = Selection(gameState, cgstree)                  # 根据当前的游戏状态和搜索树，选择一个最好的子节点
