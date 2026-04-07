@@ -277,8 +277,26 @@ class MCTSAgent(MultiAgentSearchAgent):
                 3. You should use best_UCT() to find the best child of a node each time.
 
             '''
-        
-            return (cgs, cgstree)
+            children = []
+            children.append((cgstree.north, "North"))
+            children.append((cgstree.east, "East"))
+            children.append((cgstree.south, "South"))
+            children.append((cgstree.west, "West"))
+            children.append((cgstree.stop, "Stop"))
+            
+            for child, action in children:
+                if child is None:
+                    return cgs, cgstree
+            
+            next_state, action = best_UCT(children, random_prob=0.3)
+            
+            next_node = None
+            for child, act in children:
+                if act == action:
+                    next_node = child
+                    break
+            return Selection(next_state, next_node)
+
 
         def Expansion(cgstree):
             legal_actions = cgstree.statevalue.getLegalActions(0)
@@ -288,6 +306,38 @@ class MCTSAgent(MultiAgentSearchAgent):
                 2. You should use Node() to create a new node for each child.
                 3. You can traverse the legal_actions to find all the children of the current game state tree node.
             '''
+            for action in legal_actions:
+                if action == 'North':
+                    if cgstree.north is None:
+                        new_state = cgstree.statevalue.generatePacmanSuccessor('North')
+                        new_node = Node((new_state, 0, 0))
+                        new_node.parent = cgstree
+                        cgstree.north = new_node
+                elif action == 'East':
+                    if cgstree.east is None:
+                        new_state = cgstree.statevalue.generatePacmanSuccessor('East')
+                        new_node = Node((new_state, 0, 0))
+                        new_node.parent = cgstree
+                        cgstree.east = new_node
+                elif action == 'South':
+                    if cgstree.south is None:
+                        new_state = cgstree.statevalue.generatePacmanSuccessor('South')
+                        new_node = Node((new_state, 0, 0))
+                        new_node.parent = cgstree
+                        cgstree.south = new_node
+                elif action == 'West':
+                    if cgstree.west is None:
+                        new_state = cgstree.statevalue.generatePacmanSuccessor('West')
+                        new_node = Node((new_state, 0, 0))
+                        new_node.parent = cgstree
+                        cgstree.west = new_node
+                elif action == 'Stop':
+                    if cgstree.stop is None:
+                        new_state = cgstree.statevalue.generatePacmanSuccessor('Stop')
+                        new_node = Node((new_state, 0, 0))
+                        new_node.parent = cgstree
+                        cgstree.stop = new_node
+            
 
         def Simulation(cgs, cgstree):
             '''
